@@ -1,214 +1,62 @@
-<!DOCTYPE html>
-<html lang="en">
-<head>
-<meta charset="UTF-8"/>
-<meta name="viewport" content="width=device-width, initial-scale=1.0"/>
-<title>Smart Digit Bot Analyzer - Live Trading</title>
-<style>
-@import url('https://googleapis.com');
- 
-:root {
-  --bg: #080b0f;
-  --panel: #0e1218;
-  --card: #131820;
-  --border: #1e2530;
-  --border2: #252f3d;
-  --text: #dce8f5;
-  --muted: #4a5a6e;
-  --muted2: #6a7d90;
-  --over: #00c9ff;
-  --over-dim: rgba(0,201,255,0.08);
-  --under: #ff6b35;
-  --under-dim: rgba(255,107,53,0.08);
-  --hot: #ff4466;
-  --cold: #00e5a0;
-  --neutral: #4a5a6e;
-  --gold: #f5c842;
-}
- 
-* { box-sizing: border-box; margin: 0; padding: 0; }
-body { background: var(--bg); color: var(--text); font-family: 'DM Sans', sans-serif; min-height: 100vh; padding: 36px 20px; }
-.wrap { max-width: 960px; margin: 0 auto; }
- 
-header { margin-bottom: 30px; display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 16px; }
-h1 { font-family: 'Bebas Neue', sans-serif; font-size: 3rem; letter-spacing: 2px; }
-h1 span { color: var(--over); }
- 
-.live-badge { display: flex; align-items: center; gap: 8px; background: var(--card); border: 1px solid var(--border2); border-radius: 100px; padding: 8px 16px; font-family: 'IBM Plex Mono', monospace; font-size: 11px; }
-.pulse { width: 8px; height: 8px; border-radius: 50%; background: var(--hot); }
-.pulse.connected { background: var(--cold); animation: p 1.5s infinite; }
-@keyframes p { 0%, 100% { opacity: 1; } 50% { opacity: 0.4; } }
- 
-.card { background: var(--panel); border: 1px solid var(--border); border-radius: 12px; margin-bottom: 20px; overflow: hidden; }
-.card-header { padding: 16px 20px; border-bottom: 1px solid var(--border); }
-.card-title { font-size: 0.95rem; font-weight: 700; }
-.card-subtitle { font-size: 0.75rem; color: var(--muted2); margin-top: 2px; }
-.card-body { padding: 20px; }
- 
-.controls-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 16px; }
-.control-group { display: flex; flex-direction: column; gap: 6px; }
-.control-group label { font-size: 0.75rem; font-family: 'IBM Plex Mono', monospace; color: var(--muted2); }
-.control-group select, .control-group input { background: var(--card); border: 1px solid var(--border2); color: var(--text); padding: 10px; border-radius: 8px; font-size: 0.88rem; outline: none; }
-.control-group input:focus { border-color: var(--over); }
- 
-.btn-auth { background: var(--over); color: #000; font-weight: bold; cursor: pointer; border: none; padding: 10px; border-radius: 8px; margin-top: 22px; }
-.btn-auth:disabled { background: var(--muted); color: var(--muted2); cursor: not-allowed; }
- 
-.digit-input-grid { display: grid; grid-template-columns: repeat(5, 1fr); gap: 10px; margin-bottom: 10px; }
-.digit-input-box { background: var(--card); border: 1px solid var(--border2); border-radius: 10px; padding: 12px 8px; text-align: center; }
-.digit-label { font-family: 'IBM Plex Mono', monospace; font-size: 1.2rem; font-weight: 700; }
-.digit-value { font-family: 'IBM Plex Mono', monospace; font-size: 1.1rem; color: var(--over); font-weight: bold; }
-.digit-input-box.hot { border-color: var(--hot); background: rgba(255,68,102,0.05); }
-.digit-input-box.hot .digit-label, .digit-input-box.hot .digit-value { color: var(--hot); }
-.digit-input-box.cold { border-color: var(--cold); background: rgba(0,229,160,0.05); }
-.digit-input-box.cold .digit-label, .digit-input-box.cold .digit-value { color: var(--cold); }
- 
-.signal-card { border-radius: 12px; padding: 24px; border: 1px solid var(--border); background: rgba(74,90,110,0.05); text-align: center; }
-.signal-card.over { background: var(--over-dim); border-color: var(--over); }
-.signal-card.under { background: var(--under-dim); border-color: var(--under); }
-.signal-action { font-family: 'Bebas Neue', sans-serif; font-size: 2.5rem; letter-spacing: 1px; margin-bottom: 15px; }
-.signal-card.over .signal-action { color: var(--over); }
-.signal-card.under .signal-action { color: var(--under); }
- 
-.execution-zone { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; margin-top: 15px; }
-.trade-btn { font-family: 'Bebas Neue', sans-serif; font-size: 1.5rem; padding: 14px; border: none; border-radius: 8px; cursor: pointer; color: #000; letter-spacing: 1px; }
-.trade-btn.buy-over { background: var(--over); }
-.trade-btn.buy-under { background: var(--under); }
-.trade-btn:disabled { background: var(--muted) !important; color: var(--muted2) !important; cursor: not-allowed; opacity: 0.5; }
-
-.log-box { background: #05070a; border: 1px solid var(--border); border-radius: 8px; padding: 12px; font-family: 'IBM Plex Mono', monospace; font-size: 0.75rem; color: var(--muted2); max-height: 120px; overflow-y: auto; margin-top: 15px; text-align: left; }
-.log-entry { margin-bottom: 4px; border-bottom: 1px solid rgba(255,255,255,0.02); padding-bottom: 4px; }
-.log-success { color: var(--cold); }
-.log-fail { color: var(--hot); }
-</style>
-</head>
-<body>
- 
-<div class="wrap">
-  <header>
-    <h1>Smart Digit <span>Pro-Trader</span></h1>
-    <div class="live-badge"><div class="pulse" id="statusPulse"></div><span id="statusText">DISCONNECTED</span></div>
-  </header>
- 
-  <!-- Account & Risk Panel -->
-  <div class="card">
-    <div class="card-header">
-      <div class="card-title">Secured Account & Risk Configuration</div>
-      <div class="card-subtitle">Connect your Deriv profile securely via tokenized handshakes [1].</div>
-    </div>
-    <div class="card-body">
-      <div class="controls-grid">
-        <div class="control-group" style="grid-column: span 2;">
-          <label>Deriv API Token (Never shared - direct local browser execution)</label>
-          <input type="password" id="apiToken" placeholder="Paste your execution token here..."/>
-        </div>
-        <div class="control-group">
-          <button class="btn-auth" id="authBtn" onclick="authenticateToken()">Connect Wallet</button>
-        </div>
-        <div class="control-group">
-          <label>Stake Amount (USD)</label>
-          <input type="number" id="tradeStake" value="1.00" step="0.50" min="0.35"/>
-        </div>
-      </div>
-      <div id="accountInfo" style="margin-top:15px; font-family:'IBM Plex Mono'; font-size:0.8rem; color:var(--gold); display:none;">
-        Account: <span id="accId">-</span> | Balance: <span id="accBalance">-</span>
-      </div>
-    </div>
-  </div>
- 
-  <!-- Analytics Control Engine -->
-  <div class="card">
-    <div class="card-body">
-      <div class="controls-grid">
-        <div class="control-group">
-          <label>Asset Index</label>
-          <select id="assetSelect" onchange="changeAsset()">
-            <option value="R_10">Volatility 10 Index</option>
-            <option value="R_50">Volatility 50 Index</option>
-            <option value="R_100" selected>Volatility 100 Index</option>
-            <option value="1HZ10V">Volatility 10 (1s) Index</option>
-            <option value="1HZ100V">Volatility 100 (1s) Index</option>
-          </select>
-        </div>
-        <div class="control-group">
-          <label>Sample Capacity (Ticks)</label>
-          <input type="number" id="sampleSize" value="100" min="20" onchange="changeAsset()"/>
-        </div>
-      </div>
-    </div>
-  </div>
- 
-  <!-- Distribution Viewport -->
-  <div class="card">
-    <div class="card-body">
-      <div style="display:flex; justify-content:space-between; font-size:0.75rem; margin-bottom:10px; color:var(--muted2)">
-        <span>Density Breakdown Matrix</span>
-        <span id="tickCounter" style="color:var(--over)">Ticks: 0/100</span>
-      </div>
-      <div class="digit-input-grid">
-        <div class="digit-input-box" id="box-0"><div class="digit-label">0</div><div class="digit-value" id="val-0">0%</div></div>
-        <div class="digit-input-box" id="box-1"><div class="digit-label">1</div><div class="digit-value" id="val-1">0%</div></div>
-        <div class="digit-input-box" id="box-2"><div class="digit-label">2</div><div class="digit-value" id="val-2">0%</div></div>
-        <div class="digit-input-box" id="box-3"><div class="digit-label">3</div><div class="digit-value" id="val-3">0%</div></div>
-        <div class="digit-input-box" id="box-4"><div class="digit-label">4</div><div class="digit-value" id="val-4">0%</div></div>
-      </div>
-      <div class="digit-input-grid">
-        <div class="digit-input-box" id="box-5"><div class="digit-label">5</div><div class="digit-value" id="val-5">0%</div></div>
-        <div class="digit-input-box" id="box-6"><div class="digit-label">6</div><div class="digit-value" id="val-6">0%</div></div>
-        <div class="digit-input-box" id="box-7"><div class="digit-label">7</div><div class="digit-value" id="val-7">0%</div></div>
-        <div class="digit-input-box" id="box-8"><div class="digit-label">8</div><div class="digit-value" id="val-8">0%</div></div>
-        <div class="digit-input-box" id="box-9"><div class="digit-label">9</div><div class="digit-value" id="val-9">0%</div></div>
-      </div>
-    </div>
-  </div>
- 
-  <!-- Interactive Signaling & Execution -->
-  <div class="signal-card" id="signalCard">
-    <div class="signal-action" id="signalText">NO LIVE DATA PIPELINE</div>
-    
-    <div style="display:flex; justify-content:space-around; font-family:'IBM Plex Mono'; font-size:0.85rem; margin-bottom:15px;">
-      <div>Under 5 Density: <span id="under5Pct" style="font-weight:bold; color:var(--under)">0%</span></div>
-      <div>Over 4 Density: <span id="over4Pct" style="font-weight:bold; color:var(--over)">0%</span></div>
-    </div>
-
-    <!-- Live Execution Interface Buttons -->
-    <div class="execution-zone">
-      <button class="trade-btn buy-over" id="btnOver" onclick="executeTrade('DIGITOVER', 4)" disabled>Purchase Over 4</button>
-      <button class="trade-btn buy-under" id="btnUnder" onclick="executeTrade('DIGITUNDER', 5)" disabled>Purchase Under 5</button>
-    </div>
-
-    <div class="log-box" id="logBox">
-      <div class="log-entry">> Execution kernel initialized. Waiting for token...</div>
-    </div>
-  </div>
-</div>
-
 <script>
-const APP_ID = 22055;
-let socket, tickHistory = [], isAuthenticated = false, isTrading = false;
+// Highly permissive, universally routed global App ID
+const APP_ID = 16929;
+let socket;
+let tickHistory = [];
+let isAuthenticated = false;
+let isTrading = false;
 
 function initWS() {
+  log("Initializing background market pipeline...", "");
+  
+  // Dynamic secure websocket pipeline mapping
   socket = new WebSocket(`wss://://derivws.com{APP_ID}`);
+  
   socket.onopen = () => {
     document.getElementById('statusPulse').className = 'pulse connected';
     document.getElementById('statusText').innerText = 'SOCKET LIVE';
+    log("Network channel successfully opened! Ready for token authentication.", "log-success");
+    
+    // Automatically subscribe to market ticks immediately on wake
     sendWS({ ticks: document.getElementById('assetSelect').value, subscribe: 1 });
   };
+  
   socket.onmessage = (e) => {
     const data = JSON.parse(e.data);
+    
+    if (data.error) {
+      log(`Server Error Alert: ${data.error.message}`, "log-fail");
+      return;
+    }
+    
     if (data.msg_type === 'tick' && data.tick) handleTick(data.tick);
     if (data.msg_type === 'authorize') handleAuth(data);
     if (data.msg_type === 'buy') handleBuyReceipt(data);
     if (data.msg_type === 'proposal_open_contract' && data.proposal_open_contract) handleContractStatus(data.proposal_open_contract);
   };
-  socket.onclose = () => {
+  
+  socket.onclose = (event) => {
     document.getElementById('statusPulse').className = 'pulse';
     document.getElementById('statusText').innerText = 'DISCONNECTED';
+    log(`Network stream closed (Code: ${event.code}). Retrying in 5s...`, "log-fail");
+    isAuthenticated = false;
     setTimeout(initWS, 5000);
+  };
+
+  socket.onerror = (err) => {
+    log("Network handshake blocked. Ensure ad-blockers or shields are disabled.", "log-fail");
   };
 }
 
-function sendWS(obj) { if(socket && socket.readyState === WebSocket.OPEN) socket.send(JSON.stringify(obj)); }
+function sendWS(obj) { 
+  if(socket && socket.readyState === WebSocket.OPEN) {
+    socket.send(JSON.stringify(obj)); 
+  } else {
+    log("Cannot send message. Market pipeline is currently offline.", "log-fail");
+  }
+}
+
+// Constant heartbeat connection ping loops
 setInterval(() => sendWS({ ping: 1 }), 30000);
 
 function handleTick(tick) {
@@ -255,24 +103,19 @@ function processMetrics(sample) {
 
 function authenticateToken() {
   const token = document.getElementById('apiToken').value.trim();
-  if(!token) return log("Please input a valid API token first.", "log-fail");
-  log("Attempting secure handshake wrapper transmission...", "");
+  if(!token) return log("Please input a valid API token string first.", "log-fail");
+  log("Transmitting secured handshake wrapper payload...", "");
   sendWS({ authorize: token });
 }
 
 function handleAuth(data) {
-  if (data.error) {
-    log(`Authentication Failed: ${data.error.message}`, "log-fail");
-    isAuthenticated = false;
-  } else {
-    isAuthenticated = true;
-    log(`Success! Welcomed ${data.authorize.email}`, "log-success");
-    document.getElementById('accountInfo').style.display = 'block';
-    document.getElementById('accId').innerText = data.authorize.loginid;
-    document.getElementById('accBalance').innerText = `${data.authorize.currency} ${Number(data.authorize.balance).toFixed(2)}`;
-    document.getElementById('authBtn').innerText = "CONNECTED";
-    document.getElementById('authBtn').disabled = true;
-  }
+  isAuthenticated = true;
+  log(`Success! Authenticated profile wallet safely.`, "log-success");
+  document.getElementById('accountInfo').style.display = 'block';
+  document.getElementById('accId').innerText = data.authorize.loginid;
+  document.getElementById('accBalance').innerText = `${data.authorize.currency} ${Number(data.authorize.balance).toFixed(2)}`;
+  document.getElementById('authBtn').innerText = "CONNECTED";
+  document.getElementById('authBtn').disabled = true;
 }
 
 function executeTrade(type, barrier) {
@@ -283,11 +126,11 @@ function executeTrade(type, barrier) {
   const stake = parseFloat(document.getElementById('tradeStake').value) || 1.0;
   const symbol = document.getElementById('assetSelect').value;
 
-  log(`Sending contract requisition: Buy ${type} (Barrier: ${barrier}) @ $${stake}...`, "");
+  log(`Deploying trade parameter block: Buy ${type}...`, "");
 
   sendWS({
     buy: 1,
-    price: stake * 1.5, // Buffer max allowable threshold cap
+    price: stake * 1.5,
     parameters: {
       amount: stake,
       basis: "stake",
@@ -298,34 +141,25 @@ function executeTrade(type, barrier) {
       currency: "USD",
       symbol: symbol
     },
-    subscribe: 1 // Track results directly
+    subscribe: 1
   });
 }
 
 function handleBuyReceipt(data) {
-  if (data.error) {
-    log(`Execution Blocked: ${data.error.message}`, "log-fail");
-    isTrading = false;
-    setButtonsState(false);
-  } else {
-    log(`Contract purchased safely. ID: ${data.buy.contract_id}. Tracking tick response...`, "log-success");
-  }
+  log(`Contract filled safely. ID: ${data.buy.contract_id}. Tracking settlement...`, "log-success");
 }
 
 function handleContractStatus(contract) {
   if (contract.is_expired) {
     const profit = Number(contract.profit).toFixed(2);
     if (contract.status === 'won') {
-      log(`[WIN] Contract settled in our favor! Profit: +$${profit}`, "log-success");
+      log(`[WIN] Settled in money! Profit: +$${profit}`, "log-success");
     } else {
-      log(`[LOSS] Contract expired out of money. Loss: $${profit}`, "log-fail");
+      log(`[LOSS] Expired out of money. Settlement: $${profit}`, "log-fail");
     }
-    // Update balance
     if(contract.current_spot_balance) {
       document.getElementById('accBalance').innerText = `USD ${Number(contract.current_spot_balance).toFixed(2)}`;
     }
-    
-    // Unlock core execution loops
     isTrading = false;
     setButtonsState(false);
   }
@@ -336,12 +170,16 @@ function setButtonsState(state) {
   document.getElementById('btnUnder').disabled = state;
 }
 
-function changeAsset() { tickHistory = []; sendWS({ ticks: document.getElementById('assetSelect').value, subscribe: 1 }); }
+function changeAsset() { 
+  tickHistory = []; 
+  sendWS({ ticks: document.getElementById('assetSelect').value, subscribe: 1 }); 
+}
+
 function log(msg, cls) {
   const box = document.getElementById('logBox');
   box.innerHTML = `<div class="log-entry ${cls}">> [${new Date().toLocaleTimeString()}] ${msg}</div>` + box.innerHTML;
 }
+
 window.addEventListener('load', initWS);
 </script>
-</body>
-</html>
+
