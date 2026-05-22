@@ -287,6 +287,21 @@ h1 span { color: var(--over); }
 }
 
 /* How to get token */
+/* Preset buttons */
+.preset-btn {
+  background: var(--card);
+  border: 1px solid var(--border2);
+  color: var(--muted2);
+  font-family: 'IBM Plex Mono', monospace;
+  font-size: 0.7rem;
+  padding: 4px 10px;
+  border-radius: 4px;
+  cursor: pointer;
+  transition: all 0.15s;
+}
+.preset-btn:hover { border-color: var(--over); color: var(--over); }
+.preset-btn.active-preset { background: rgba(0,201,255,0.12); border-color: var(--over); color: var(--over); font-weight: 700; }
+
 .token-help {
   background: rgba(0,201,255,0.05);
   border: 1px solid rgba(0,201,255,0.15);
@@ -359,7 +374,7 @@ h1 span { color: var(--over); }
   <div class="card">
     <div class="card-header">
       <div class="card-title">📊 Market Configuration</div>
-      <div class="card-subtitle">Select your index and tick sample size for analysis</div>
+      <div class="card-subtitle">Select your index, analysis sample size, and trade tick duration</div>
     </div>
     <div class="card-body">
       <div class="controls-grid">
@@ -378,9 +393,31 @@ h1 span { color: var(--over); }
           </select>
         </div>
         <div class="control-group">
-          <label>Sample Size (Ticks)</label>
-          <input type="number" id="sampleSize" value="100" min="20" max="500" onchange="changeAsset()"/>
+          <label>Analysis Sample Size (Ticks)</label>
+          <input type="number" id="sampleSize" value="100" min="20" max="1000" onchange="changeSample()"/>
+          <div style="display:flex;gap:6px;margin-top:6px;flex-wrap:wrap;">
+            <button class="preset-btn" onclick="setSample(25)">25</button>
+            <button class="preset-btn" onclick="setSample(50)">50</button>
+            <button class="preset-btn active-preset" onclick="setSample(100)">100</button>
+            <button class="preset-btn" onclick="setSample(200)">200</button>
+            <button class="preset-btn" onclick="setSample(500)">500</button>
+          </div>
         </div>
+        <div class="control-group">
+          <label>Trade Duration (Ticks)</label>
+          <input type="number" id="tradeTicks" value="1" min="1" max="10"/>
+          <div style="display:flex;gap:6px;margin-top:6px;flex-wrap:wrap;">
+            <button class="preset-btn active-preset" onclick="setTradeTicks(1)">1t</button>
+            <button class="preset-btn" onclick="setTradeTicks(2)">2t</button>
+            <button class="preset-btn" onclick="setTradeTicks(3)">3t</button>
+            <button class="preset-btn" onclick="setTradeTicks(5)">5t</button>
+            <button class="preset-btn" onclick="setTradeTicks(10)">10t</button>
+          </div>
+        </div>
+      </div>
+      <div style="margin-top:14px;background:rgba(0,201,255,0.05);border:1px solid rgba(0,201,255,0.12);border-radius:8px;padding:12px 14px;font-size:0.78rem;color:var(--muted2);line-height:1.8;">
+        <span style="color:var(--over);font-weight:700;">ℹ Sample Size</span> = how many past ticks are analysed for digit frequency (bigger = more accurate but slower to update)<br/>
+        <span style="color:var(--gold);font-weight:700;">⚡ Trade Duration</span> = how many ticks your contract lasts (1 tick = fastest, 5 ticks = more time for digit to land)
       </div>
     </div>
   </div>
@@ -698,8 +735,13 @@ function executeTrade(contractType, barrier) {
   if (isTrading) return;
 
   const stake = parseFloat(document.getElementById('tradeStake').value) || 0.35;
+  const tradeTicks = parseInt(document.getElementById('tradeTicks').value) || 1;
   if (stake < 0.35) {
     showError('Minimum stake is $0.35');
+    return;
+  }
+  if (tradeTicks < 1 || tradeTicks > 10) {
+    showError('Trade ticks must be between 1 and 10.');
     return;
   }
 
@@ -709,7 +751,7 @@ function executeTrade(contractType, barrier) {
   const symbol = document.getElementById('assetSelect').value;
   const direction = contractType === 'DIGITOVER' ? 'OVER' : 'UNDER';
 
-  log(`Placing trade: ${direction} ${barrier} | Stake: $${stake.toFixed(2)} | ${symbol}`, 'log-info');
+  log(`Placing trade: ${direction} ${barrier} | Stake: $${stake.toFixed(2)} | Duration: ${tradeTicks}t | ${symbol}`, 'log-info');
 
   sendWS({
     buy: 1,
@@ -718,7 +760,7 @@ function executeTrade(contractType, barrier) {
       amount: stake,
       basis: 'stake',
       barrier: barrier.toString(),
-      duration: 1,
+      duration: tradeTicks,
       duration_unit: 't',
       contract_type: contractType,
       currency: 'USD',
@@ -819,6 +861,33 @@ function changeAsset() {
   document.getElementById('lastDigit').textContent = '—';
   subscribeToTicks();
   log(`Switched to ${document.getElementById('assetSelect').options[document.getElementById('assetSelect').selectedIndex].text}`, 'log-info');
+}
+
+function changeSample() {
+  const val = parseInt(document.getElementById('sampleSize').value) || 100;
+  tickHistory = tickHistory.slice(-val);
+  document.getElementById('tickCounter').textContent = `${tickHistory.length} / ${val} ticks`;
+  log(`Analysis sample updated to ${val} ticks`, 'log-info');
+}
+
+function setSample(val) {
+  document.getElementById('sampleSize').value = val;
+  document.querySelectorAll('.preset-btn').forEach(b => {
+    if (b.getAttribute('onclick') && b.getAttribute('onclick').includes('setSample')) {
+      b.classList.toggle('active-preset', b.getAttribute('onclick') === `setSample(${val})`);
+    }
+  });
+  changeSample();
+}
+
+function setTradeTicks(val) {
+  document.getElementById('tradeTicks').value = val;
+  document.querySelectorAll('.preset-btn').forEach(b => {
+    if (b.getAttribute('onclick') && b.getAttribute('onclick').includes('setTradeTicks')) {
+      b.classList.toggle('active-preset', b.getAttribute('onclick') === `setTradeTicks(${val})`);
+    }
+  });
+  log(`Trade duration set to ${val} tick${val > 1 ? 's' : ''}`, 'log-info');
 }
 
 // ─── LOGGING ──────────────────────────────────────────
